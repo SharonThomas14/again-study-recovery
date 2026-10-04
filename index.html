@@ -6,37 +6,30 @@
     <meta name="theme-color" content="#f6f4ec" />
     <meta
       name="description"
-      content="When life interrupts, find your next achievable step. Again helps students rebuild assignment plans with honest trade-offs."
+      content="When life interrupts, find your next achievable step. ReStrive helps students rebuild assignment plans with honest trade-offs."
     />
-    <title>Again — room to begin again</title>
-    <link rel="icon" href="./favicon.svg" />
+    <title>ReStrive — room to begin again</title>
+    <link rel="icon" type="image/png" href="./restrive-logo.png" />
     <link rel="stylesheet" href="./style.css" />
   </head>
   <body>
     <a href="#main" class="skip">Skip to your plan</a>
     <div class="app-shell">
       <aside class="sidebar">
-        <a class="brand" href="./" aria-label="Again home"
-          ><img src="./favicon.svg" alt="" />again<span>®</span></a
+        <a class="brand" href="./" aria-label="ReStrive home"
+          ><span class="brand-mark"><img src="./restrive-logo.png" alt="" /></span>ReStrive</a
         >
         <p class="brand-caption">ROOM TO BEGIN AGAIN</p>
         <nav aria-label="Main navigation">
-          <button class="nav-item active" data-view="today">
-            <span>◒</span> My next step
-            <span class="nav-count">01</span></button
-          ><button class="nav-item" data-view="plan">
-            <span>▤</span> The whole plan</button
-          ><button class="nav-item" data-view="library">
-            <span>▧</span> Courses & materials</button
-          ><button class="nav-item" data-view="readiness">
-            <span>◔</span> Learning progress</button
-          ><button class="nav-item" data-action="edit">
-            <span>↗</span> My assignment
-          </button>
+          <button class="nav-item" data-view="profile"><span>◉</span> Profile</button>
+          <button class="nav-item active" data-view="home"><span>⌂</span> Home</button>
+          <button class="nav-item" data-view="library"><span>▧</span> Projects / Courses</button>
+          <button class="nav-item" data-view="readiness"><span>◔</span> Learning Progress</button>
+          <button class="nav-item" data-view="calendar"><span>▦</span> Calendar</button>
         </nav>
         <div class="sidebar-note">
           <span class="little-star">✳</span>
-          <p>Life happens.<br />Your plan can change.</p>
+          <p>Life happens.<br />Find your study stride again.</p>
           <span>A SMALL STEP STILL COUNTS.</span>
         </div>
         <button class="local-note" data-action="privacy">
@@ -53,10 +46,10 @@
             <span id="today-date"></span
             ><button
               class="avatar"
-              data-action="edit"
-              aria-label="Edit assignment"
+              data-view="profile"
+              aria-label="Open profile"
             >
-              ↗
+              ◉
             </button>
           </div>
         </header>
@@ -64,7 +57,7 @@
         <footer>
           <span>Progress has more than one pace.</span
           ><span
-            >AGAIN / A WORKING PROTOTYPE
+            >RESTRIVE / A WORKING PROTOTYPE
             <button data-action="about">About this experiment ↗</button></span
           >
         </footer>

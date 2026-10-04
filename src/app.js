@@ -1,10 +1,14 @@
 import {
   initCampus,
   campusScreen,
+  campusDates,
   campusExport,
   campusRestore,
   clearCampus,
+  showCourseProjects,
 } from "./campus.js";
+import { initWorkspace, profileScreen, homeScreen, calendarScreen, calendarStudyAvailability, workspaceExport, workspaceRestore, clearWorkspace } from "./workspace.js";
+import { parseHours, hourInput } from "./calendar-availability.js";
 import {
   iso,
   addDays,
@@ -46,10 +50,19 @@ try {
   projects = projects.filter(validateProject);
 } catch {}
 state.projectId ||= crypto.randomUUID();
-let view = "today",
-  todayMinutes = Math.min(20, state.availability[iso()] ?? 20),
+const usesCalendar = (project) => !project.demo && project.availabilityMode !== "manual";
+const calendarOverrides = (project) => {
+  if (project.availabilityMode || project.availabilityOverrides) return project.availabilityOverrides || {};
+  return Object.fromEntries(Object.entries(project.availability || {}).filter(([day, value]) =>
+    value !== (new Date(`${day}T12:00:00`).getDay() === 0 ? 0 : 45)));
+};
+const effectiveAvailability = (project) => usesCalendar(project)
+  ? { ...calendarStudyAvailability(iso(), project.deadline), ...calendarOverrides(project) }
+  : project.availability;
+let view = "home",
+  todayMinutes = Math.min(20, effectiveAvailability(state)[iso()] ?? 20),
   interruption = state.history?.length
-    ? `Today I have ${Math.min(20, state.availability[iso()] ?? 20)} minutes.`
+    ? `Today I have ${Math.min(20, effectiveAvailability(state)[iso()] ?? 20)} minutes.`
     : "I missed yesterday’s session, and today I only have 20 minutes.",
   draft = null,
   undo = null,
@@ -57,7 +70,7 @@ let view = "today",
   ticker = null,
   toastTimeout;
 const current = () =>
-  plan(state.tasks, state.availability, iso(), state.deadline, state.omitted);
+  plan(state.tasks, effectiveAvailability(state), iso(), state.deadline, state.omitted);
 if (!state.schedule?.days) state.schedule = current();
 const remaining = () =>
   state.tasks.reduce((n, t) => n + Math.max(0, t.estimate - t.completed), 0);
@@ -99,22 +112,34 @@ function timeline(p) {
   return `<div class="timeline">${days.map((d) => `<div class="day ${d.date === iso() ? "today" : ""}"><div class="day-label"><span>${d.date === iso() ? "Today" : dateLabel(d.date, { weekday: "short" })}</span><b>${dateLabel(d.date, { day: "numeric" })}</b></div>${d.sessions.length ? d.sessions.map((s) => `<div class="day-session">${esc(s.title)}<span>${minutes(s.minutes)}</span></div>`).join("") : `<div class="day-session empty">${d.capacity ? "Room to breathe" : "Life outside study"}</div>`}<div class="hint">${d.used} / ${d.capacity} min</div></div>`).join("")}</div>${all.length > 7 ? `<p class="hint">Next 7 days shown. Calendar export includes all ${all.length} days.</p>` : ""}`;
 }
 function render() {
+  state.schedule = current();
+  const projectList = [...projects.filter((p) => p.projectId !== state.projectId), state]
+    .map((project) => ({
+      ...project,
+      schedule: plan(project.tasks, effectiveAvailability(project), iso(), project.deadline, project.omitted),
+    }));
   $("#today-date").textContent = dateLabel(iso(), {
     weekday: "short",
     day: "numeric",
     month: "short",
   }).toUpperCase();
   $("#top-label").textContent = {
+    home: "Home",
+    profile: "Profile and settings",
+    calendar: "Your calendar",
     today: "A fresh start",
     plan: "Your assignment, in view",
-    library: "Your course library",
+    library: "Your projects",
     readiness: "Learning, in view",
   }[view];
   document
     .querySelectorAll("[data-view]")
     .forEach((b) => b.classList.toggle("active", b.dataset.view === view));
+  if (view === "home") { $("#main").innerHTML = homeScreen(projectList, campusDates()); return; }
+  if (view === "profile") { $("#main").innerHTML = profileScreen(); return; }
+  if (view === "calendar") { $("#main").innerHTML = calendarScreen(projectList, campusDates()); return; }
   if (view === "library" || view === "readiness") {
-    $("#main").innerHTML = campusScreen(view);
+    $("#main").innerHTML = campusScreen(view) + (view === "library" ? `<section class="feature-card" style="margin-top:24px"><div class="section-title"><h2>Your assignments</h2><button class="text-button" data-action="new">+ New assignment</button></div>${projectList.map((p) => `<button class="project-switch" data-project-id="${esc(p.projectId)}"><strong>${esc(p.title)}</strong><span>${esc(p.course || "Assignment")} · Due ${dateLabel(p.deadline)} ↗</span></button>`).join("")}</section>` : "");
     return;
   }
   const p = current(),
@@ -132,14 +157,15 @@ function render() {
  <article class="next-card"><div class="card-head"><span class="eyebrow">02 / YOUR NEXT SMALL STEP</span><span class="tag">${next ? minutes(next.minutes) : "ALL CLEAR"}</span></div><div class="circle-detail"></div><h2>${done ? "You did the thing." : next ? esc(next.title) : "Make room for what matters."}</h2><p>${done ? "Every small session added up. Your work is ready for its next chapter." : next ? esc(state.tasks.find((t) => t.id === next.taskId)?.note) : "There is no study time before your deadline. Adjust your availability or decide what can wait."}</p><div class="next-bottom"><span>${next ? `${next.date === iso() ? "TODAY" : dateLabel(next.date).toUpperCase()} · ONE THING AT A TIME` : "YOUR PACE. YOUR PLAN."}</span><button class="round-arrow" data-action="${next ? "focus" : "edit"}" aria-label="${next ? "Start focus session" : "Edit assignment"}">↗</button></div></article></section>
  <div class="assignment-strip"><div class="assignment-meta"><span class="assignment-icon">▤</span><div><strong>${esc(state.title)}</strong><p>${esc(state.course)} · ${esc(state.goal)}</p></div></div><div class="deadline">Due ${dateLabel(state.deadline)}<small>${minutes(p.required)} planned work remaining${p.skipped.length ? " · optional work deferred" : ""}</small></div></div><section><div class="section-title"><h2>The road ahead <span style="color:var(--muted);font-size:11px">/ next 7 days</span></h2><button class="text-button" data-view="plan">See the whole plan ↗</button></div>${timeline(state.schedule)}<div class="timeline-caption"><span>${state.history.length ? "Your accepted plan. Adjust it whenever life changes." : "Your original plan. Unfinished past sessions are included in recovery."}</span><span class="legend"><span><i></i>Study session</span><span>Open space is intentional</span></span></div></section><button class="new-assignment" data-action="new">${state.demo ? "Make it yours — start your own assignment ↗" : "Start a different assignment ↗"}</button>
  `
-        : `<div class="eyebrow">THE WHOLE PLAN / ${state.demo ? "EXAMPLE" : "PERSONAL"}</div><h1 class="large-heading">${esc(state.title)}</h1><p class="subtext">${esc(state.goal)} · Due ${dateLabel(state.deadline)}</p><div class="plan-toolbar"><div><button class="secondary" data-action="projects">Switch project</button><button class="secondary" data-action="edit">Edit assignment ↗</button><button class="secondary" data-action="availability">Set availability</button></div><div><button class="secondary" data-action="calendar">Export calendar ↓</button><button class="secondary" data-action="backup">Backup ↓</button></div></div><div class="metrics"><div class="metric"><b>${minutes(p.required)}</b><span>Remaining selected work</span></div><div class="metric"><b>${minutes(p.capacity)}</b><span>Available before deadline</span></div><div class="metric"><b>${minutes(p.overflow || p.slack)}</b><span>${p.overflow ? "Does not fit" : "Spare study time"}</span></div></div>${p.overflow ? `<div class="notice warning">There is ${minutes(p.overflow)} more work than time. <button class="text-button" data-action="recover">Review priorities ↗</button></div>` : ""}${timeline(p)}<div class="task-list">${state.tasks.map((t, i) => `<div class="task-row ${t.completed >= t.estimate ? "done" : ""}"><button class="check" data-complete="${esc(t.id)}" aria-label="${t.completed >= t.estimate ? "Reopen" : "Mark complete"} ${esc(t.title)}">${t.completed >= t.estimate ? "✓" : String(i + 1).padStart(2, "0")}</button><div><h3>${esc(t.title)} ${t.optional ? '<span class="tag">OPTIONAL</span>' : ""} ${state.omitted.includes(t.id) ? '<span class="tag">DEFERRED</span>' : ""}</h3><p>${esc(t.note)}</p></div><span>${t.completed}/${t.estimate}m</span></div>`).join("")}</div><div class="button-row"><button class="secondary" data-action="new">New assignment</button><button class="secondary" data-action="import">Restore backup</button>${undo ? '<button class="secondary" data-action="undo">Undo last change</button>' : ""}</div>`
+        : `<div class="eyebrow">THE WHOLE PLAN / ${state.demo ? "EXAMPLE" : "PERSONAL"}</div><h1 class="large-heading">${esc(state.title)}</h1><p class="subtext">${esc(state.goal)} · Due ${dateLabel(state.deadline)}</p><p class="hint">${usesCalendar(state) ? "Study availability follows free time in your calendar. Adjust daily hours only when needed." : "This plan uses manually set availability. Switch to calendar time under Adjust availability."}</p><div class="plan-toolbar"><div><button class="secondary" data-action="projects">Switch project</button><button class="secondary" data-action="edit">Edit assignment ↗</button><button class="secondary" data-action="availability">Adjust availability</button></div><div><button class="secondary" data-action="calendar">Export calendar ↓</button><button class="secondary" data-action="backup">Backup ↓</button></div></div><div class="metrics"><div class="metric"><b>${minutes(p.required)}</b><span>Remaining selected work</span></div><div class="metric"><b>${minutes(p.capacity)}</b><span>Available before deadline</span></div><div class="metric"><b>${minutes(p.overflow || p.slack)}</b><span>${p.overflow ? "Does not fit" : "Spare study time"}</span></div></div>${p.overflow ? `<div class="notice warning">There is ${minutes(p.overflow)} more work than time. <button class="text-button" data-action="recover">Review priorities ↗</button></div>` : ""}${timeline(p)}<div class="task-list">${state.tasks.map((t, i) => `<div class="task-row ${t.completed >= t.estimate ? "done" : ""}"><button class="check" data-complete="${esc(t.id)}" aria-label="${t.completed >= t.estimate ? "Reopen" : "Mark complete"} ${esc(t.title)}">${t.completed >= t.estimate ? "✓" : String(i + 1).padStart(2, "0")}</button><div><h3>${esc(t.title)} ${t.optional ? '<span class="tag">OPTIONAL</span>' : ""} ${state.omitted.includes(t.id) ? '<span class="tag">DEFERRED</span>' : ""}</h3><p>${esc(t.note)}</p></div><span>${hourInput(t.completed)}/${hourInput(t.estimate)}h</span></div>`).join("")}</div><div class="button-row"><button class="secondary" data-action="new">New assignment</button><button class="secondary" data-action="import">Restore backup</button>${undo ? '<button class="secondary" data-action="undo">Undo last change</button>' : ""}</div>`
     }`;
 }
 function recovery() {
   const parsed = parseInterruption(interruption);
   if (parsed.minutes !== null) todayMinutes = parsed.minutes;
   draft = {
-    availability: { ...state.availability, [iso()]: todayMinutes },
+    availability: { ...effectiveAvailability(state), [iso()]: todayMinutes },
+    availabilityOverrides: { ...calendarOverrides(state), [iso()]: todayMinutes },
     omitted: [...state.omitted],
   };
   showRecovery();
@@ -166,7 +192,7 @@ function showRecovery() {
     }))
     .filter((c) => c.was.join() !== c.now.join());
   modal(
-    `${header(p.feasible ? "A way forward. With room for life." : "Let’s be honest about the time.")}<p class="subtext">Today is set to <strong>${todayMinutes} minutes</strong>. All unfinished work, including missed sessions, is carried forward. Completed progress is preserved.</p><div class="metrics"><div class="metric"><b>${minutes(p.required)}</b><span>Work to do</span></div><div class="metric"><b>${minutes(p.capacity)}</b><span>Time you actually have</span></div><div class="metric"><b>${minutes(p.overflow || p.slack)}</b><span>${p.overflow ? "Does not fit" : "Spare study time"}</span></div></div><div class="notice ${p.feasible ? "" : "warning"}">${p.feasible ? `Your selected work fits. ${loss ? `Your calendar-day buffer reduces by ${loss} ${loss === 1 ? "day" : "days"}. ` : ""}Estimated finish: ${dateLabel(p.finish)}. ${p.slack ? "Spare minutes allow for uncertainty; they are not a promise." : "No spare study time remains. A longer task could put the deadline at risk."}` : `${minutes(p.overflow)} cannot fit before ${dateLabel(state.deadline)}. Defer optional work, add realistic availability, or discuss an extension. Required work is never silently removed.`}</div><div class="eyebrow">WHAT CHANGES</div>${changes.length ? changes.map(({ t, was, now }) => `<div class="change"><span>↳</span><div><strong>${esc(t.title)}</strong><p>${draft.omitted.includes(t.id) ? "Deferred by your choice." : now.length ? `${was.length ? dateLabel(was[0]) : "Unscheduled"} → ${dateLabel(now[0])}${now.length > 1 ? " (split across sessions)" : ""}` : "No space before the deadline."}</p></div><small>${minutes(t.estimate - t.completed)}</small></div>`).join("") : '<p class="subtext">No task dates change. Your available time is updated.</p>'}${p.unscheduled.length ? `<p class="error">Still unscheduled: ${p.unscheduled.map((s) => `${esc(s.title)} (${minutes(s.minutes)})`).join("; ")}.</p>` : ""}${state.tasks.some((t) => t.optional && t.completed < t.estimate) ? '<h3 style="font-size:14px;margin-top:24px">You choose what can wait.</h3><p class="subtext">Only defer work you have confirmed is optional for your assignment.</p>' : ""}${state.tasks
+    `${header(p.feasible ? "A way forward. With room for life." : "Let’s be honest about the time.")}<p class="subtext">Today is set to <strong>${hourInput(draft.availability[iso()] ?? 0)} hours</strong>. Your daily adjustments are included. All unfinished work is carried forward and completed progress is preserved.</p><div class="metrics"><div class="metric"><b>${minutes(p.required)}</b><span>Work to do</span></div><div class="metric"><b>${minutes(p.capacity)}</b><span>Time you actually have</span></div><div class="metric"><b>${minutes(p.overflow || p.slack)}</b><span>${p.overflow ? "Does not fit" : "Spare study time"}</span></div></div><div class="notice ${p.feasible ? "" : "warning"}">${p.feasible ? `Your selected work fits. ${loss ? `Your calendar-day buffer reduces by ${loss} ${loss === 1 ? "day" : "days"}. ` : ""}Estimated finish: ${dateLabel(p.finish)}. ${p.slack ? "Spare minutes allow for uncertainty; they are not a promise." : "No spare study time remains. A longer task could put the deadline at risk."}` : `${minutes(p.overflow)} cannot fit before ${dateLabel(state.deadline)}. Defer optional work, add realistic availability, or discuss an extension. Required work is never silently removed.`}</div><div class="eyebrow">WHAT CHANGES</div>${changes.length ? changes.map(({ t, was, now }) => `<div class="change"><span>↳</span><div><strong>${esc(t.title)}</strong><p>${draft.omitted.includes(t.id) ? "Deferred by your choice." : now.length ? `${was.length ? dateLabel(was[0]) : "Unscheduled"} → ${dateLabel(now[0])}${now.length > 1 ? " (split across sessions)" : ""}` : "No space before the deadline."}</p></div><small>${minutes(t.estimate - t.completed)}</small></div>`).join("") : '<p class="subtext">No task dates change. Your available time is updated.</p>'}${p.unscheduled.length ? `<p class="error">Still unscheduled: ${p.unscheduled.map((s) => `${esc(s.title)} (${minutes(s.minutes)})`).join("; ")}.</p>` : ""}${state.tasks.some((t) => t.optional && t.completed < t.estimate) ? '<h3 style="font-size:14px;margin-top:24px">You choose what can wait.</h3><p class="subtext">Only defer work you have confirmed is optional for your assignment.</p>' : ""}${state.tasks
       .filter((t) => t.optional && t.completed < t.estimate)
       .map(
         (t) =>
@@ -179,7 +205,8 @@ function showRecovery() {
 }
 function accept() {
   undo = structuredClone(state);
-  state.availability = draft.availability;
+  if (usesCalendar(state)) { state.availabilityMode = "calendar"; state.availabilityOverrides = draft.availabilityOverrides; }
+  else state.availability = draft.availability;
   state.omitted = draft.omitted;
   state.schedule = current();
   state.history.push({
@@ -195,7 +222,7 @@ function accept() {
   toast("Recovery plan saved. One small step from here.");
 }
 function taskEditor(t) {
-  return `<div class="task-edit" data-task-id="${esc(t.id)}"><input type="text" value="${esc(t.title)}" required maxlength="120" aria-label="Step name"><input type="number" value="${t.estimate}" min="${Math.max(5, t.completed || 0)}" max="3000" step="1" required aria-label="Estimated minutes"><label><input type="checkbox" ${t.optional ? "checked" : ""}>Optional</label><button type="button" data-remove-task aria-label="Remove step">×</button></div>`;
+  return `<div class="task-edit" data-task-id="${esc(t.id)}"><input type="text" value="${esc(t.title)}" required maxlength="120" aria-label="Step name"><input type="number" value="${hourInput(t.estimate)}" min="0.01" max="50.00" step="0.01" required aria-label="Estimated hours"><label><input type="checkbox" ${t.optional ? "checked" : ""}>Optional</label><button type="button" data-remove-task aria-label="Remove step">×</button></div>`;
 }
 function edit(isNew = false) {
   const p = isNew
@@ -213,22 +240,22 @@ function edit(isNew = false) {
       }
     : state;
   modal(
-    `${header(isNew ? "Make room for your assignment." : "Your assignment. Your priorities.")}<form id="edit-form" data-new="${isNew}"><label class="field">Assignment name<input name="title" value="${esc(p.title)}" placeholder="e.g. Community design proposal" required maxlength="120"></label><div class="form-row"><label class="field">Course / subject<input name="course" value="${esc(p.course)}" placeholder="Optional" maxlength="100"></label><label class="field">Deadline<input name="deadline" type="date" value="${p.deadline}" min="${iso()}" max="${addDays(iso(), 90)}" required></label></div><label class="field">What are you aiming for?<input name="goal" value="${esc(p.goal)}" maxlength="180" required></label><h3 style="font-size:14px;margin-top:25px">Break it into steps.</h3><p class="subtext">Keep prerequisite steps first. Estimates include work already done. Mark optional only when you can safely defer that step.</p><div class="task-edit task-labels"><span>STEP · IN WORKING ORDER</span><span>MINUTES</span><span>OPTIONAL</span></div><div id="edit-tasks">${p.tasks.map(taskEditor).join("")}</div><button type="button" class="text-button" data-action="add-task">+ Add a step</button><p id="form-error" class="error" role="alert"></p><div class="button-row"><button type="button" class="secondary" data-action="close">Cancel</button><button class="primary" type="submit">${isNew ? "Set my availability" : "Save assignment"} <span>↗</span></button></div>${isNew ? '<p class="hint">Your current assignment stays in your project library.</p>' : ""}</form>`,
+    `${header(isNew ? "Make room for your assignment." : "Your assignment. Your priorities.")}<form id="edit-form" data-new="${isNew}"><label class="field">Assignment name<input name="title" value="${esc(p.title)}" placeholder="e.g. Community design proposal" required maxlength="120"></label><div class="form-row"><label class="field">Course / subject<input name="course" value="${esc(p.course)}" placeholder="Optional" maxlength="100"></label><label class="field">Deadline<input name="deadline" type="date" value="${p.deadline}" min="${iso()}" max="${addDays(iso(), 90)}" required></label></div><label class="field">What are you aiming for?<input name="goal" value="${esc(p.goal)}" maxlength="180" required></label><h3 style="font-size:14px;margin-top:25px">Break it into steps.</h3><p class="subtext">Keep prerequisite steps first. Estimates include work already done. Mark optional only when you can safely defer that step.</p><div class="task-edit task-labels"><span>STEP · IN WORKING ORDER</span><span>HOURS (0.00)</span><span>OPTIONAL</span></div><div id="edit-tasks">${p.tasks.map(taskEditor).join("")}</div><button type="button" class="text-button" data-action="add-task">+ Add a step</button><p id="form-error" class="error" role="alert"></p><div class="button-row"><button type="button" class="secondary" data-action="close">Cancel</button><button class="primary" type="submit">${isNew ? "Create assignment" : "Save assignment"} <span>↗</span></button></div>${isNew ? '<p class="hint">Availability is suggested from your calendar. You can adjust it later.</p>' : ""}</form>`,
   );
 }
 function availability() {
-  const p = draft || state,
+  const values = draft?.availability || effectiveAvailability(state),
     count = Math.min(91, Math.max(0, daysBetween(iso(), state.deadline) + 1));
   modal(
-    `${header("Time you actually have.")}<p class="subtext">Realistic study minutes, after work, meals, travel and rest. Zero is valid. These are daily budgets; calendar export creates all-day reminders.</p><form id="availability-form"><div class="week-inputs">${Array.from(
+    `${header("Adjust your study availability.")}<p class="subtext">${usesCalendar(state) ? "Suggested from free time in your calendar." : "This older plan uses manually set daily time."} Weekdays use 6–8 pm; weekends use 10 am–1 pm. Timed calendar events block overlapping time, and all-day events block the day. These are suggestions, so adjust any day that does not reflect your real commitments.</p><form id="availability-form"><div class="week-inputs">${Array.from(
       { length: count },
       (_, i) => {
         const day = addDays(iso(), i);
-        return `<label>${dateLabel(day, { weekday: "short", day: "numeric", month: "short" })}<input type="number" name="${day}" min="0" max="480" step="1" value="${p.availability[day] ?? 0}" required aria-label="Study minutes ${dateLabel(day)}"></label>`;
+        return `<label>${dateLabel(day, { weekday: "short", day: "numeric", month: "short" })}<input type="number" name="${day}" min="0" max="8.00" step="0.01" value="${hourInput(values[day] ?? 0)}" required aria-label="Study hours ${dateLabel(day)}"></label>`;
       },
     ).join(
       "",
-    )}</div>${!count ? '<p class="error">The deadline has passed. Edit the assignment to record an agreed new deadline.</p>' : ""}<div class="button-row"><button type="button" class="secondary" data-action="close">Cancel</button><button class="primary" type="submit" ${count ? "" : "disabled"}>Review this availability <span>↗</span></button></div></form>`,
+    )}</div>${!count ? '<p class="error">The deadline has passed. Edit the assignment to record an agreed new deadline.</p>' : ""}<p id="availability-error" class="error" role="alert"></p><div class="button-row"><button type="button" class="secondary" data-action="close">Cancel</button>${!usesCalendar(state) ? '<button type="button" class="secondary" data-action="use-calendar">Use calendar time</button>' : '<button type="button" class="secondary" data-action="reset-calendar">Reset to calendar</button>'}<button class="primary" type="submit" ${count ? "" : "disabled"}>Review adjustment <span>↗</span></button></div></form>`,
   );
 }
 function startFocus() {
@@ -290,11 +317,10 @@ function finishSession() {
   const t = state.tasks.find((t) => t.id === focus.taskId),
     amount = Math.min(focus.length, t.estimate - t.completed);
   t.completed += amount;
-  state.availability[iso()] = Math.max(
-    0,
-    (state.availability[iso()] || 0) - amount,
-  );
-  todayMinutes = state.availability[iso()];
+  const remainingToday = Math.max(0, (effectiveAvailability(state)[iso()] || 0) - amount);
+  if (usesCalendar(state)) { const overrides = calendarOverrides(state); state.availabilityMode = "calendar"; state.availabilityOverrides = { ...overrides, [iso()]: remainingToday }; }
+  else state.availability[iso()] = remainingToday;
+  todayMinutes = remainingToday;
   interruption = `Today I have ${todayMinutes} minutes left.`;
   state.schedule = current();
   save();
@@ -325,14 +351,14 @@ function exportCalendar() {
   const rows = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//Again//Study Recovery//EN",
+    "PRODID:-//ReStrive//Study Recovery//EN",
     "CALSCALE:GREGORIAN",
   ];
   for (const d of p.days)
     d.sessions.forEach((s, i) =>
       rows.push(
         "BEGIN:VEVENT",
-        `UID:${d.date}-${s.taskId}-${i}@again.local`,
+        `UID:${d.date}-${s.taskId}-${i}@restrive.local`,
         `DTSTAMP:${new Date()
           .toISOString()
           .replace(/[-:]/g, "")
@@ -346,12 +372,12 @@ function exportCalendar() {
       ),
     );
   rows.push("END:VCALENDAR");
-  download("again-study-plan.ics", rows.join("\r\n"), "text/calendar");
+  download("restrive-study-plan.ics", rows.join("\r\n"), "text/calendar");
   toast("Exported as all-day study reminders.");
 }
 function about() {
   modal(
-    `${header("Room to begin again.")}<p class="subtext">Again is an assignment recovery experiment for students whose lives don’t follow a perfect calendar. It makes remaining work, actual availability and the consequences of replanning visible.</p><div class="notice">This prototype uses a rule-based scheduler. It doesn’t predict grades, read your rubric, or use a language model. You control estimates, step order and optional work.</div><p class="subtext">The hypothesis: students find it easier to resume when they understand and choose the trade-off. This still needs testing with real students.</p><div class="button-row"><button class="secondary" data-action="demo">Load example assignment</button><button class="primary" data-action="new">Try your own assignment <span>↗</span></button></div>`,
+    `${header("Room to begin again.")}<p class="subtext">ReStrive is an assignment recovery experiment for students whose lives don’t follow a perfect calendar. It makes remaining work, actual availability and the consequences of replanning visible.</p><div class="notice">This prototype uses a rule-based scheduler. It doesn’t predict grades, read your rubric, or use a language model. You control estimates, step order and optional work.</div><p class="subtext">The hypothesis: students find it easier to resume when they understand and choose the trade-off. This still needs testing with real students.</p><div class="button-row"><button class="secondary" data-action="demo">Load example assignment</button><button class="primary" data-action="new">Try your own assignment <span>↗</span></button></div>`,
   );
 }
 function privacy() {
@@ -402,6 +428,7 @@ document.addEventListener("click", (e) => {
     return;
   }
   if (b.dataset.view) {
+    if (b.dataset.view === "library") showCourseProjects();
     view = b.dataset.view;
     render();
     return;
@@ -453,6 +480,22 @@ document.addEventListener("click", (e) => {
     case "availability":
       availability();
       break;
+    case "use-calendar":
+      state.availabilityMode = "calendar";
+      state.availabilityOverrides = {};
+      draft = null;
+      state.schedule = current();
+      save();
+      availability();
+      break;
+    case "reset-calendar":
+      state.availabilityMode = "calendar";
+      state.availabilityOverrides = {};
+      draft = null;
+      state.schedule = current();
+      save();
+      availability();
+      break;
     case "add-task":
       $("#edit-tasks").insertAdjacentHTML(
         "beforeend",
@@ -473,13 +516,14 @@ document.addEventListener("click", (e) => {
       break;
     case "backup":
       download(
-        "again-backup.json",
+        "restrive-backup.json",
         JSON.stringify(
           {
             format: "again.workspace.v1",
             active: state,
             projects,
             learning: campusExport(),
+            workspace: workspaceExport(),
           },
           null,
           2,
@@ -532,6 +576,7 @@ document.addEventListener("click", (e) => {
         localStorage.removeItem(KEY);
         localStorage.removeItem("again.projects.v1");
         clearCampus();
+        clearWorkspace();
         projects = [];
       } catch {}
       state = makeDemo();
@@ -542,7 +587,7 @@ document.addEventListener("click", (e) => {
       break;
     case "import":
       modal(
-        `${header("Restore an assignment.")}<p class="subtext">An Again JSON backup replaces this device’s current plan.</p><form id="import-form"><label class="field">Backup file<input type="file" name="backup" accept="application/json,.json" required></label><p id="import-error" class="error" role="alert"></p><button class="primary" type="submit">Restore backup <span>↗</span></button></form>`,
+        `${header("Restore an assignment.")}<p class="subtext">A ReStrive JSON backup replaces this device’s current plan.</p><form id="import-form"><label class="field">Backup file<input type="file" name="backup" accept="application/json,.json" required></label><p id="import-error" class="error" role="alert"></p><button class="primary" type="submit">Restore backup <span>↗</span></button></form>`,
       );
       break;
   }
@@ -571,28 +616,25 @@ document.addEventListener("submit", async (e) => {
       return {
         id: row.dataset.taskId,
         title: row.querySelector("input[type=text]").value.trim(),
-        estimate: Number(row.querySelector("input[type=number]").value),
+        estimate: parseHours(row.querySelector("input[type=number]").value),
         optional: row.querySelector("input[type=checkbox]").checked,
         completed: old?.completed || 0,
         note: old?.note || "Work on this step, then log the progress you make.",
       };
     });
     if (
-      tasks.some((t) => !t.title) ||
+      tasks.some((t) => !t.title || t.estimate === null || t.estimate < Math.max(1, t.completed)) ||
       !String(data.get("title")).trim() ||
       !String(data.get("goal")).trim()
     ) {
       $("#form-error").textContent =
-        "Give the assignment, goal and every step a name.";
+        "Name every step and enter its hours as 0.00, at least as much as already completed.";
       return;
     }
     undo = structuredClone(state);
     if (isNew) save();
     const deadline = String(data.get("deadline")),
       av = isNew ? {} : { ...state.availability };
-    if (isNew)
-      for (let d = iso(); d <= deadline; d = addDays(d, 1))
-        av[d] = new Date(d + "T12:00:00").getDay() === 0 ? 0 : 45;
     state = {
       ...state,
       projectId: isNew ? crypto.randomUUID() : state.projectId,
@@ -603,6 +645,8 @@ document.addEventListener("submit", async (e) => {
       deadline,
       tasks,
       availability: av,
+      availabilityMode: isNew ? "calendar" : state.availabilityMode,
+      availabilityOverrides: isNew ? {} : (state.availabilityOverrides || {}),
       omitted: isNew
         ? []
         : state.omitted.filter((id) =>
@@ -614,15 +658,23 @@ document.addEventListener("submit", async (e) => {
     save();
     close();
     render();
-    if (isNew) availability();
-    else toast("Assignment updated.");
+    toast(isNew ? "Assignment created with calendar-based availability. Adjust daily hours if needed." : "Assignment updated.");
   }
   if (form.id === "availability-form") {
-    const values = Object.fromEntries(
-      [...data.entries()].map(([d, n]) => [d, Number(n)]),
-    );
+    const values = Object.fromEntries([...data.entries()].map(([d, n]) => [d, parseHours(n, { allowZero: true, max: 8 })]));
+    if (Object.values(values).some((value) => value === null)) {
+      $("#availability-error").textContent = "Enter daily hours from 0.00 to 8.00, using no more than two decimal places.";
+      return;
+    }
+    const base = calendarStudyAvailability(iso(), state.deadline);
+    const overrides = { ...calendarOverrides(state) };
+    if (usesCalendar(state)) for (const [day, value] of Object.entries(values)) {
+      if (value === base[day]) delete overrides[day];
+      else overrides[day] = value;
+    }
     draft = {
-      availability: { ...state.availability, ...values },
+      availability: { ...effectiveAvailability(state), ...values },
+      availabilityOverrides: overrides,
       omitted: [...(draft?.omitted || state.omitted)],
     };
     todayMinutes = draft.availability[iso()] || 0;
@@ -636,7 +688,7 @@ document.addEventListener("submit", async (e) => {
       const raw = JSON.parse(await file.text());
       const loaded = raw.format === "again.workspace.v1" ? raw.active : raw;
       if (!validateProject(loaded))
-        throw Error("This is not a valid Again backup.");
+        throw Error("This is not a valid ReStrive backup.");
       if (raw.format === "again.workspace.v1") {
         if (
           !Array.isArray(raw.projects) ||
@@ -644,6 +696,7 @@ document.addEventListener("submit", async (e) => {
         )
           throw Error("Invalid project library.");
         campusRestore(raw.learning);
+        if (raw.workspace) workspaceRestore(raw.workspace);
         projects = raw.projects;
       }
       undo = structuredClone(state);
@@ -674,6 +727,36 @@ initCampus({
   toast,
   download,
   render,
+  syncTopicTasks: (courseId, topic) => {
+    const sync = (project) => {
+      if (project.courseId !== courseId) return project;
+      return { ...project, tasks: project.tasks.map((task) => task.sourceTopic === topic.id
+        ? { ...task, title: `Study: ${topic.title}`, estimate: Math.max(task.completed, topic.studyMinutes ?? 30) }
+        : task) };
+    };
+    projects = projects.map(sync);
+    state = sync(state);
+    state.schedule = current();
+    save();
+  },
+  removeTopicTasks: (courseId, topicIds) => {
+    const removed = new Set(Array.isArray(topicIds) ? topicIds : [topicIds]);
+    const withoutTopic = (project) => {
+      if (project.courseId !== courseId) return project;
+      const tasks = project.tasks.filter((task) => !removed.has(task.sourceTopic));
+      return { ...project, tasks, omitted: project.omitted.filter((id) => tasks.some((task) => task.id === id)) };
+    };
+    projects = projects.map(withoutTopic).filter((project) => project.tasks.length);
+    state = withoutTopic(state);
+    if (!state.tasks.length) state = structuredClone(projects[0] || makeDemo());
+    state.projectId ||= crypto.randomUUID();
+    state.schedule = current();
+    save();
+  },
+  projectSummary: () => {
+    const all = [...projects.filter((p) => p.projectId !== state.projectId), state];
+    return { done: all.reduce((n,p) => n + p.tasks.filter((t) => t.completed >= t.estimate).length, 0), total: all.reduce((n,p) => n + p.tasks.length, 0), hours: all.reduce((n,p) => n + p.tasks.reduce((m,t) => m + Math.max(0,t.estimate-t.completed), 0), 0) / 60 };
+  },
   navigate: (v) => {
     view = v;
     render();
@@ -700,18 +783,15 @@ initCampus({
           deadline,
           tasks: [],
           availability: {},
+          availabilityMode: "calendar",
+          availabilityOverrides: {},
           omitted: [],
           history: [],
           created: iso(),
         };
-        for (
-          let d = iso(), i = 0;
-          d <= deadline && i < 91;
-          d = addDays(d, 1), i++
-        )
-          target.availability[d] =
-            new Date(d + "T12:00:00").getDay() === 0 ? 0 : 45;
       }
+      target.availabilityOverrides ||= calendarOverrides(target);
+      target.availabilityMode = "calendar";
       state = structuredClone(target);
     }
     for (const task of tasks) {
@@ -735,7 +815,8 @@ initCampus({
     view = "plan";
     render();
     close();
-    toast("Study tasks added. Set your realistic availability next.");
+    toast("Study tasks added using calendar availability. Adjust daily hours if needed.");
   },
 });
+initWorkspace({ modal, header, close, toast, render });
 render();

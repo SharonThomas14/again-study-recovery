@@ -1,7 +1,7 @@
-# Again — hackathon demonstration and judging evidence
+# ReStrive — hackathon demonstration and judging evidence
 
 ## The one-sentence pitch
-Again turns course material into small learning steps, then helps students recover when life interrupts—with visible consequences and choices they control.
+ReStrive turns course material into small learning steps, then helps students recover when life interrupts—with visible consequences and choices they control.
 
 ## Judging rubric mapping
 | Criterion supplied by the team | Demonstrable evidence | What still needs external validation |

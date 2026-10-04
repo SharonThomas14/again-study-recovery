@@ -1,5 +1,8 @@
 # Verification record — 3 October 2026
 
+## 4 October 2026 addendum
+An isolated browser test uploaded a generated 500-page PDF through the file chooser. The course showed all 500 pages and 60 sampled practice topics; opening the material displayed extracted source text. Removing it deleted the course material and those 60 topics, returning the course to its previous counts. The upload and removal test used a separate local origin so existing app data was untouched.
+
 ## Automated checks
 27 Node tests pass, including 500 deterministic varied scheduling scenarios.
 
@@ -22,7 +25,7 @@ Covered: work conservation, capacity bounds, dependency order, deadline boundari
 - Published GitHub Pages root returns HTTP 200 and the app renders.
 
 ## Verification limits
-The browser automation extension blocked its file chooser from supplying local files without the user's extension file-access setting. The same PDF extraction path was verified using the app's public sample-PDF loader; automated arbitrary local-file selection was not verified. Native users can choose files using the standard input.
+The original 3 October browser check could not supply local files through its file chooser. The 4 October addendum above verifies that flow with a generated local PDF.
 
 Responsive styles are implemented. The browser viewport override did not change the observed viewport on this host, so a true narrow-device browser run is not claimed here. Desktop visual inspection was performed.
 

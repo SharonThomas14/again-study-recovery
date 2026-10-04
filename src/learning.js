@@ -133,9 +133,26 @@ A prototype is an early representation of a solution used to explore and test id
 
 # Comparing alternatives
 A trade-off is a choice that improves one outcome while reducing another. Feasibility is the ability to deliver a proposed solution with available resources and constraints. Desirability is how well a solution meets the needs and preferences of intended users. Evidence is information used to support or challenge a claim. A limitation is a boundary on what can be concluded from a method, sample or result.`;
+export const MAX_MATERIAL_BYTES = 100 * 1024 * 1024;
+export const MAX_PDF_PAGES = 600;
+
+export function extractDistributedTopics(pages, documentId) {
+  if (pages.length <= 80) return extractStudyMaterial(pages, documentId);
+  const selected = Array.from({ length: 60 }, (_, index) =>
+    pages[Math.round((index * (pages.length - 1)) / 59)],
+  );
+  return selected.flatMap((page) => {
+    const topic = extractStudyMaterial([page], `${documentId}-page${page.page}`)[0];
+    if (!topic) return [];
+    topic.documentId = documentId;
+    topic.cards.forEach((card) => { card.documentId = documentId; });
+    return [topic];
+  });
+}
+
 export async function readDocument(file, onProgress = () => {}) {
-  if (file.size > 15 * 1024 * 1024)
-    throw Error("Choose a file smaller than 15 MB.");
+  if (file.size > MAX_MATERIAL_BYTES)
+    throw Error("Choose a file smaller than 100 MB.");
   const ext = file.name.split(".").pop().toLowerCase();
   if (["txt", "md"].includes(ext)) {
     const text = await file.text();
@@ -159,9 +176,9 @@ export async function readDocument(file, onProgress = () => {}) {
   });
   const doc = await loadingTask.promise;
   try {
-    if (doc.numPages > 80) throw Error("Use a PDF with 80 pages or fewer.");
+    if (doc.numPages > MAX_PDF_PAGES)
+      throw Error("Use a PDF with 600 pages or fewer.");
     const pages = [];
-    let size = 0;
     for (let n = 1; n <= doc.numPages; n++) {
       onProgress(`Reading page ${n} of ${doc.numPages}…`);
       const page = await doc.getPage(n),
@@ -169,17 +186,9 @@ export async function readDocument(file, onProgress = () => {}) {
       let text = "";
       for (const item of content.items)
         text += item.str + (item.hasEOL ? "\n" : " ");
-      size += text.length;
-      if (size > 250000)
-        throw Error(
-          "Use a shorter document, under 250,000 extracted characters.",
-        );
-      pages.push({ page: n, text });
+      pages.push({ page: n, text: text.slice(0, 12000) });
+      page.cleanup();
     }
-    if (pages.reduce((n, p) => n + p.text.trim().length, 0) < 60)
-      throw Error(
-        "This PDF has no usable text layer. Upload a text-based PDF or paste the text; scanned pages need OCR first.",
-      );
     return pages;
   } finally {
     await loadingTask.destroy();

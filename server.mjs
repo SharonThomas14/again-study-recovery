@@ -9,6 +9,7 @@ const types = {
   ".mjs": "text/javascript",
   ".svg": "image/svg+xml",
   ".pdf": "application/pdf",
+  ".png": "image/png",
 };
 http
   .createServer(async (req, res) => {
@@ -17,7 +18,7 @@ http
         new URL(req.url, "http://localhost").pathname,
       );
       if (
-        !/^\/(?:$|index\.html$|style\.css$|favicon\.svg$|(?:src|vendor|samples)\/[a-zA-Z0-9_.-]+$)/.test(
+        !/^\/(?:$|index\.html$|style\.css$|restrive-logo\.png$|(?:src|vendor|samples)\/[a-zA-Z0-9_.-]+$)/.test(
           pathname,
         )
       )
@@ -38,5 +39,5 @@ http
     }
   })
   .listen(4173, "127.0.0.1", () =>
-    console.log("Again running at http://127.0.0.1:4173"),
+    console.log("ReStrive running at http://127.0.0.1:4173"),
   );

@@ -213,7 +213,7 @@ export function validateProject(p) {
       t.title.length > 200 ||
       typeof t.note !== "string" ||
       !Number.isInteger(t.estimate) ||
-      t.estimate < 5 ||
+      t.estimate < 1 ||
       t.estimate > 3000 ||
       !Number.isInteger(t.completed) ||
       t.completed < 0 ||
