@@ -891,13 +891,13 @@ export function initCampus(a) {
             .replace(/\.\d{3}/, ""),
         safe = db.reminder.title.replace(/[\r\n,;\\]/g, " ");
       api.download(
-        "restrive-reminder.ics",
+        "restride-reminder.ics",
         [
           "BEGIN:VCALENDAR",
           "VERSION:2.0",
-          "PRODID:-//ReStrive//Study reminder//EN",
+          "PRODID:-//ReStride//Study reminder//EN",
           "BEGIN:VEVENT",
-          `UID:${crypto.randomUUID()}@restrive.local`,
+          `UID:${crypto.randomUUID()}@restride.local`,
           `DTSTAMP:${stamp(new Date())}`,
           `DTSTART:${stamp(time)}`,
           `DTEND:${stamp(new Date(+time + 20 * 60000))}`,
@@ -925,7 +925,7 @@ export function initCampus(a) {
       persist();
       api.toast(title + " — a small step still counts.");
       if ("Notification" in window && Notification.permission === "granted")
-        new Notification("ReStrive · time for your next step", {
+        new Notification("ReStride · time for your next step", {
           body: title,
           icon: "./restrive-logo.png",
         });

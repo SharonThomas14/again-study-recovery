@@ -1,7 +1,7 @@
-# ReStrive — hackathon demonstration and judging evidence
+# ReStride — hackathon demonstration and judging evidence
 
 ## The one-sentence pitch
-ReStrive turns course material into small learning steps, then helps students recover when life interrupts—with visible consequences and choices they control.
+ReStride turns course material into small learning steps, then helps students recover when life interrupts—with visible consequences and choices they control.
 
 ## Judging rubric mapping
 | Criterion supplied by the team | Demonstrable evidence | What still needs external validation |

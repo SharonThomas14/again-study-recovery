@@ -351,14 +351,14 @@ function exportCalendar() {
   const rows = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//ReStrive//Study Recovery//EN",
+    "PRODID:-//ReStride//Study Recovery//EN",
     "CALSCALE:GREGORIAN",
   ];
   for (const d of p.days)
     d.sessions.forEach((s, i) =>
       rows.push(
         "BEGIN:VEVENT",
-        `UID:${d.date}-${s.taskId}-${i}@restrive.local`,
+        `UID:${d.date}-${s.taskId}-${i}@restride.local`,
         `DTSTAMP:${new Date()
           .toISOString()
           .replace(/[-:]/g, "")
@@ -372,12 +372,12 @@ function exportCalendar() {
       ),
     );
   rows.push("END:VCALENDAR");
-  download("restrive-study-plan.ics", rows.join("\r\n"), "text/calendar");
+  download("restride-study-plan.ics", rows.join("\r\n"), "text/calendar");
   toast("Exported as all-day study reminders.");
 }
 function about() {
   modal(
-    `${header("Room to begin again.")}<p class="subtext">ReStrive is an assignment recovery experiment for students whose lives don’t follow a perfect calendar. It makes remaining work, actual availability and the consequences of replanning visible.</p><div class="notice">This prototype uses a rule-based scheduler. It doesn’t predict grades, read your rubric, or use a language model. You control estimates, step order and optional work.</div><p class="subtext">The hypothesis: students find it easier to resume when they understand and choose the trade-off. This still needs testing with real students.</p><div class="button-row"><button class="secondary" data-action="demo">Load example assignment</button><button class="primary" data-action="new">Try your own assignment <span>↗</span></button></div>`,
+    `${header("Room to begin again.")}<p class="subtext">ReStride is an assignment recovery experiment for students whose lives don’t follow a perfect calendar. It makes remaining work, actual availability and the consequences of replanning visible.</p><div class="notice">This prototype uses a rule-based scheduler. It doesn’t predict grades, read your rubric, or use a language model. You control estimates, step order and optional work.</div><p class="subtext">The hypothesis: students find it easier to resume when they understand and choose the trade-off. This still needs testing with real students.</p><div class="button-row"><button class="secondary" data-action="demo">Load example assignment</button><button class="primary" data-action="new">Try your own assignment <span>↗</span></button></div>`,
   );
 }
 function privacy() {
@@ -516,7 +516,7 @@ document.addEventListener("click", (e) => {
       break;
     case "backup":
       download(
-        "restrive-backup.json",
+        "restride-backup.json",
         JSON.stringify(
           {
             format: "again.workspace.v1",
@@ -587,7 +587,7 @@ document.addEventListener("click", (e) => {
       break;
     case "import":
       modal(
-        `${header("Restore an assignment.")}<p class="subtext">A ReStrive JSON backup replaces this device’s current plan.</p><form id="import-form"><label class="field">Backup file<input type="file" name="backup" accept="application/json,.json" required></label><p id="import-error" class="error" role="alert"></p><button class="primary" type="submit">Restore backup <span>↗</span></button></form>`,
+        `${header("Restore an assignment.")}<p class="subtext">A ReStride JSON backup replaces this device’s current plan.</p><form id="import-form"><label class="field">Backup file<input type="file" name="backup" accept="application/json,.json" required></label><p id="import-error" class="error" role="alert"></p><button class="primary" type="submit">Restore backup <span>↗</span></button></form>`,
       );
       break;
   }
@@ -688,7 +688,7 @@ document.addEventListener("submit", async (e) => {
       const raw = JSON.parse(await file.text());
       const loaded = raw.format === "again.workspace.v1" ? raw.active : raw;
       if (!validateProject(loaded))
-        throw Error("This is not a valid ReStrive backup.");
+        throw Error("This is not a valid ReStride backup.");
       if (raw.format === "again.workspace.v1") {
         if (
           !Array.isArray(raw.projects) ||

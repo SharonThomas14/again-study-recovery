@@ -1,26 +1,26 @@
-# ReStrive: product and validation memo
+# ReStride: product and validation memo
 Research date: 3 October 2026. Decision: build a small, testable prototype; do not claim product-market fit or invest in a full platform yet.
 
 ## Recommendation
-An assignment recovery coach for university students with variable schedules. The entry point is the moment a plan breaks: “I missed yesterday. I have 20 minutes today.” ReStrive turns remaining work and explicitly declared availability into a revised sequence, exposes unscheduled minutes, and lets the student approve scope changes. A missed session is information, not a broken streak.
+An assignment recovery coach for university students with variable schedules. The entry point is the moment a plan breaks: “I missed yesterday. I have 20 minutes today.” ReStride turns remaining work and explicitly declared availability into a revised sequence, exposes unscheduled minutes, and lets the student approve scope changes. A missed session is information, not a broken streak.
 
 The differentiation hypothesis is **fast, understandable recovery with student-controlled trade-offs at assignment level**. Automatic rescheduling, task decomposition, and workload warnings already exist. This is a workflow and positioning bet, not a claim of unique technology.
 
 ## Evidence and its limits
-- HEPI / Advance HE's 2026 Student Academic Experience Survey surveyed 10,065 UK full-time undergraduates. 65% reported term-time paid employment; independent study averaged 11.1 hours weekly. Employed students' combined commitments averaged 44.2 hours. This supports studying around constrained time. It does not establish demand for ReStrive or generalise directly to Australia. [Primary report summary](https://www.hepi.ac.uk/reports/the-student-academic-experience-survey-2026/)
+- HEPI / Advance HE's 2026 Student Academic Experience Survey surveyed 10,065 UK full-time undergraduates. 65% reported term-time paid employment; independent study averaged 11.1 hours weekly. Employed students' combined commitments averaged 44.2 hours. This supports studying around constrained time. It does not establish demand for ReStride or generalise directly to Australia. [Primary report summary](https://www.hepi.ac.uk/reports/the-student-academic-experience-survey-2026/)
 - A meta-analysis reports a moderate association between time management and academic achievement (overall r=.262 across 76 samples; substantial heterogeneity). This is not evidence that an app causes higher grades. [Aeon et al., 2021](https://pmc.ncbi.nlm.nih.gov/articles/PMC7799745/)
 - Australian QILT survey materials explicitly measure paid work, caring, workload, and study/life balance. These are credible local interview dimensions, not a quantified Australian demand estimate. [QILT Student Experience Survey](https://www.qilt.edu.au/surveys/student-experience-survey-%28ses%29)
 - Public community discussions describe trouble allocating large assignments and abandoning overloaded plans. Such posts are self-selected, sometimes promotional, and are only qualitative leads. Do not count them as independent validation. [Example discussion](https://www.reddit.com/r/productivity/comments/1c99c09/what_is_the_best_ai_scheduler_for_allocating_time/)
 
 ## Competitive reality
-| Alternative | Verified offer | Implication for ReStrive |
+| Alternative | Verified offer | Implication for ReStride |
 |---|---|---|
 | Motion | Reschedules tasks using priorities, deadlines, availability; warns on risk and unschedulable work | Rescheduling and feasibility warnings are not unique. |
 | Shovel | Student-specific time blocking, syllabus/LMS import, workload-versus-time Cushion | Closest competitor; avoid competing first on full-semester integrations. |
 | Reclaim | Calendar optimisation, rescheduling, priorities, AI planning; student discount | Strong general-purpose substitute. Natural language is not a moat. |
 | Sunsama | Daily planning, workload checks, deferral, incomplete-task rollover | Calm tone and realistic planning alone are not unique. |
 | Goblin Tools | Task breakdown, estimation, actionable lists | Breaking down an assignment alone is insufficient differentiation. |
-| Calendar, paper, ChatGPT | Familiar, flexible substitutes with low switching cost | ReStrive must beat a short chat plus manual calendar edits. |
+| Calendar, paper, ChatGPT | Familiar, flexible substitutes with low switching cost | ReStride must beat a short chat plus manual calendar edits. |
 
 Sources: [Motion](https://www.usemotion.com/help/time-management/auto-scheduling/reference-auto-scheduling/how-auto-scheduling-works-behind-the-scenes), [Shovel](https://shovelapp.io/), [Shovel schedule setup](https://help.shovelapp.io/en/calendar/create-your-schedule), [Reclaim](https://reclaim.ai/pricing), [Sunsama](https://help.sunsama.com/docs/usage-guides/daily-planning/), [Goblin Tools](https://goblin.tools/).
 
@@ -68,7 +68,7 @@ No student interviews, pilot participants, purchases, or retention measurements 
 Recruit 12 students, with at least 8 balancing paid work or caring. Ask about the most recent missed session, observe their current recovery process, and ask what they dropped. Do not pitch until after behaviour questions. Gate: at least 8 describe a recent concrete interruption, and at least 6 show a cumbersome workaround. If not, narrow or change the segment.
 
 ### Stage 2: 8 observed usability sessions
-Use participants' own assignments with consent. Compare ReStrive against their normal method using alternating order. Tasks: enter work, lose a session, reduce today to 20 minutes, explain the trade-off, and choose scope when infeasible. Gate: 6/8 independently recover in under 60 seconds after setup; 7/8 correctly explain the consequence; no silent overscheduling or mistaken removal of required work. These are proposed thresholds, not statistically powered estimates.
+Use participants' own assignments with consent. Compare ReStride against their normal method using alternating order. Tasks: enter work, lose a session, reduce today to 20 minutes, explain the trade-off, and choose scope when infeasible. Gate: 6/8 independently recover in under 60 seconds after setup; 7/8 correctly explain the consequence; no silent overscheduling or mistaken removal of required work. These are proposed thresholds, not statistically powered estimates.
 
 ### Stage 3: two-week, 20-student concierge pilot
 Primary outcome: accepted recovery followed by a self-reported completed session within 24 hours. Secondary: time to recovery, repeat recovery use, setup abandonment, estimation error, and whether the user understood dropped scope. Gate: 12 activate, 8 use a second recovery, and at least 60% of accepted recoveries lead to a completed session. Record uncertainty and interview non-returners.
@@ -92,6 +92,6 @@ The requested product now includes courses, material ingestion, study notes, pra
 
 The additional competitor search found especially strong overlap with **RemNote**: its exam scheduler, flashcard priorities, progress view and catch-up periods already connect learning and scheduling. [Exam preparation](https://help.remnote.com/en/articles/9101991-preparing-for-an-exam), [Flashcard home and catch-up periods](https://help.remnote.com/en/articles/7925835-the-flashcard-home), [Exam study plan](https://help.remnote.com/en/articles/16081995-exam-study-plan). StudySmarter also offers document-based flashcards and quizzes. [StudySmarter flashcards](https://www.studysmarter.co.uk/features/flashcards/).
 
-Therefore do not pitch “learning + planning” or “catch-up” as unique. Test whether ReStrive's specific presentation of task-level scope loss, capacity and explicit optional-work decisions is clearer and faster for the chosen segment.
+Therefore do not pitch “learning + planning” or “catch-up” as unique. Test whether ReStride's specific presentation of task-level scope loss, capacity and explicit optional-work decisions is clearer and faster for the chosen segment.
 
 Retrieval practice has an established research basis, and feedback helps correct errors. That supports the practice interaction, not a claim that our specific generated questions improve results. Our cloze questions measure limited recall and do not establish transfer or higher-order mastery. [Researcher-led retrieval practice guide](https://www.retrievalpractice.org/summary).

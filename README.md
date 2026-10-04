@@ -1,4 +1,4 @@
-# ReStrive
+# ReStride
 ### Room to begin again.
 
 A student learning and recovery-planning prototype. Course material becomes source-linked notes and practice; unfinished work becomes an achievable next step with explicit trade-offs.
