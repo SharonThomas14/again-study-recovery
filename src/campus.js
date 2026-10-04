@@ -513,19 +513,22 @@ export function initCampus(a) {
       case "confirm-delete-course": {
         const deletion = removeCourseData(db, b.dataset.courseId);
         if (!deletion) break;
+        const previous = db;
+        db = deletion.data;
+        if (!persist()) { db = previous; break; }
+        api.removeCourseProjects(deletion.removed.id);
+        libraryOpenCourse = false;
+        selectingTopics = false;
+        selectedTopicIds.clear();
+        practice = null;
+        api.close();
+        api.render();
         try {
           await removeStoredMany(deletion.savedFileIds);
-          db = deletion.data;
-          if (!persist()) break;
-          api.removeCourseProjects(deletion.removed.id);
-          libraryOpenCourse = false;
-          selectingTopics = false;
-          selectedTopicIds.clear();
-          practice = null;
-          api.close();
-          api.render();
           api.toast(`${deletion.removed.name} deleted.`);
-        } catch (err) { api.toast(err.message); }
+        } catch {
+          api.toast("Course deleted, but its saved file could not be cleared from device storage.");
+        }
         break;
       }
       case "remove-material": {
