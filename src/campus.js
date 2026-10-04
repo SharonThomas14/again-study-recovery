@@ -1,5 +1,6 @@
 import { iso, addDays, dateLabel } from "./planner.js";
 import { parseHours, hourInput } from "./calendar-availability.js";
+import { removeCourseData } from "./course-removal.js";
 import {
   extractStudyMaterial,
   extractDistributedTopics,
@@ -134,16 +135,20 @@ async function getPages(id) {
     request.onerror = () => { db.close(); reject(Error("Could not read this PDF’s extracted text.")); };
   });
 }
-async function removeStored(id) {
+async function removeStoredMany(ids) {
+  if (!ids.length) return;
   const db = await fileStore();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(["files", "pages"], "readwrite");
-    tx.objectStore("files").delete(id);
-    tx.objectStore("pages").delete(id);
+    for (const id of ids) {
+      tx.objectStore("files").delete(id);
+      tx.objectStore("pages").delete(id);
+    }
     tx.oncomplete = () => { db.close(); resolve(); };
     tx.onerror = () => { db.close(); reject(Error("Could not remove the saved file from this device.")); };
   });
 }
+const removeStored = (id) => removeStoredMany([id]);
 async function putFile(id, file) {
   const db = await fileStore();
   return new Promise((resolve, reject) => {
@@ -168,12 +173,12 @@ async function openFile(id, name) {
   setTimeout(() => URL.revokeObjectURL(url), 30000);
 }
 function tools(view) {
-  return `<div class="plan-toolbar"><div>${view === "library" ? '<button class="text-button" data-campus="all-courses">← Your projects</button>' : `<div class="course-select"><label for="course-select">COURSE</label><select id="course-select">${db.courses.map((c) => `<option value="${esc(c.id)}" ${c.id === course()?.id ? "selected" : ""}>${esc(c.name)}</option>`).join("")}</select></div>`}</div><div><button class="secondary" data-campus="new-course">+ New course</button><button class="secondary" data-campus="upload" ${!course() ? "disabled" : ""}>Add materials ↗</button></div></div>`;
+  return `<div class="plan-toolbar"><div>${view === "library" ? '<button class="text-button" data-campus="all-courses">← Your projects</button>' : `<div class="course-select"><label for="course-select">COURSE</label><select id="course-select">${db.courses.map((c) => `<option value="${esc(c.id)}" ${c.id === course()?.id ? "selected" : ""}>${esc(c.name)}</option>`).join("")}</select></div>`}</div><div><button class="secondary" data-campus="new-course">+ New course</button><button class="secondary" data-campus="upload" ${!course() ? "disabled" : ""}>Add materials ↗</button>${view === "library" ? `<button class="secondary" data-campus="delete-course" data-course-id="${esc(course()?.id)}">Delete course</button>` : ""}</div></div>`;
 }
 function courseProjects() {
   return `<div class="eyebrow">YOUR COURSES, IN ONE PLACE</div><div class="section-title"><h1 class="large-heading">Your projects</h1><button class="secondary" data-campus="new-course">+ New course</button></div><p class="subtext">Choose a course to see its materials, study topics, quizzes and flashcards.</p><div class="course-project-grid">${db.courses.map((c) => {
     const cards = c.topics.reduce((sum, topic) => sum + topic.cards.length, 0);
-    return `<button class="course-project-card" data-campus="open-course" data-course-id="${esc(c.id)}"><span class="eyebrow">COURSE / PROJECT</span><h2>${esc(c.name)}</h2><p>${esc(c.goal || "Add a learning goal for this course.")}</p><span class="course-project-meta">${c.documents.length} ${c.documents.length === 1 ? "material" : "materials"} · ${c.topics.length} ${c.topics.length === 1 ? "topic" : "topics"} · ${cards} practice cards</span><span class="course-project-link">Open course ↗</span></button>`;
+    return `<div class="course-project-item"><button class="course-project-card" data-campus="open-course" data-course-id="${esc(c.id)}"><span class="eyebrow">COURSE / PROJECT</span><h2>${esc(c.name)}</h2><p>${esc(c.goal || "Add a learning goal for this course.")}</p><span class="course-project-meta">${c.documents.length} ${c.documents.length === 1 ? "material" : "materials"} · ${c.topics.length} ${c.topics.length === 1 ? "topic" : "topics"} · ${cards} practice cards</span><span class="course-project-link">Open course ↗</span></button><button class="course-project-remove" data-campus="delete-course" data-course-id="${esc(c.id)}" aria-label="Delete ${esc(c.name)}">Delete course</button></div>`;
   }).join("")}</div>`;
 }
 function empty() {
@@ -498,6 +503,31 @@ export function initCampus(a) {
         selectedTopicIds.clear();
         api.render();
         break;
+      case "delete-course": {
+        const target = db.courses.find((item) => item.id === b.dataset.courseId);
+        if (!target) break;
+        const plans = api.courseProjectCount(target.id);
+        api.modal(`${api.header("Delete this course?")}<p class="subtext"><strong>${esc(target.name)}</strong> will be deleted from this device along with its ${target.documents.length} ${target.documents.length === 1 ? "material" : "materials"}, ${target.topics.length} ${target.topics.length === 1 ? "topic" : "topics"}, quiz history${plans ? ` and ${plans} linked study ${plans === 1 ? "plan" : "plans"}` : ""}. Other courses and independent assignments will stay. This cannot be undone.</p><div class="button-row"><button class="secondary" data-action="close">Keep course</button><button class="primary" data-campus="confirm-delete-course" data-course-id="${esc(target.id)}">Delete course</button></div>`);
+        break;
+      }
+      case "confirm-delete-course": {
+        const deletion = removeCourseData(db, b.dataset.courseId);
+        if (!deletion) break;
+        try {
+          await removeStoredMany(deletion.savedFileIds);
+          db = deletion.data;
+          if (!persist()) break;
+          api.removeCourseProjects(deletion.removed.id);
+          libraryOpenCourse = false;
+          selectingTopics = false;
+          selectedTopicIds.clear();
+          practice = null;
+          api.close();
+          api.render();
+          api.toast(`${deletion.removed.name} deleted.`);
+        } catch (err) { api.toast(err.message); }
+        break;
+      }
       case "remove-material": {
         const doc = course()?.documents.find((item) => item.id === b.dataset.docId);
         if (!doc) break;
@@ -881,6 +911,7 @@ export function initCampus(a) {
       }
       db.reminder = {
         when: time.toISOString(),
+        courseId: course()?.id,
         title: `Study ${course()?.name || "your next step"}`,
       };
       persist();

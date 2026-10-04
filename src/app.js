@@ -9,6 +9,7 @@ import {
 } from "./campus.js";
 import { initWorkspace, profileScreen, homeScreen, calendarScreen, calendarStudyAvailability, workspaceExport, workspaceRestore, clearWorkspace } from "./workspace.js";
 import { parseHours, hourInput } from "./calendar-availability.js";
+import { withoutCourseProjects } from "./course-removal.js";
 import {
   iso,
   addDays,
@@ -727,6 +728,22 @@ initCampus({
   toast,
   download,
   render,
+  courseProjectCount: (courseId) => new Set(
+    [...projects, state].filter((project) => project.courseId === courseId).map((project) => project.projectId),
+  ).size,
+  removeCourseProjects: (courseId) => {
+    projects = withoutCourseProjects(projects, courseId);
+    if (state.courseId === courseId) {
+      state = structuredClone(projects[0] || makeDemo());
+      draft = null;
+      focus = null;
+      clearInterval(ticker);
+      ticker = null;
+    }
+    if (undo?.courseId === courseId) undo = null;
+    state.schedule = current();
+    save();
+  },
   syncTopicTasks: (courseId, topic) => {
     const sync = (project) => {
       if (project.courseId !== courseId) return project;

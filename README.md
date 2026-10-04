@@ -19,7 +19,7 @@ pnpm test
 ```
 
 ## What works
-- Multiple courses and projects, goals and deadlines.
+- Multiple courses and projects, goals and deadlines, with confirmed course deletion that clears linked study plans and saved materials.
 - PDF uploads up to 600 pages and 100 MB, plus TXT, Markdown and pasted material; source page attribution and per-file removal.
 - Generated and manual topics, individual or multi-topic editing/removal, personal notes, quizzes and flashcards.
 - Practice evidence dashboard and course topics converted to study tasks.
