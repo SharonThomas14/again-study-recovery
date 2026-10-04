@@ -134,22 +134,22 @@ A prototype is an early representation of a solution used to explore and test id
 # Comparing alternatives
 A trade-off is a choice that improves one outcome while reducing another. Feasibility is the ability to deliver a proposed solution with available resources and constraints. Desirability is how well a solution meets the needs and preferences of intended users. Evidence is information used to support or challenge a claim. A limitation is a boundary on what can be concluded from a method, sample or result.`;
 export async function readDocument(file, onProgress = () => {}) {
-  if (file.size > 15 * 1024 * 1024)
-    throw Error("Choose a file smaller than 15 MB.");
+  if (file.size > 50 * 1024 * 1024)
+    throw Error("Choose a file smaller than 50 MB.");
   const ext = file.name.split(".").pop().toLowerCase();
   if (["txt", "md"].includes(ext)) {
     const text = await file.text();
-    if (text.length > 250000)
-      throw Error("Use a document under 250,000 characters.");
+    if (text.length > 1500000)
+      throw Error("Use a document under 1,500,000 characters.");
     return [{ page: 1, text }];
   }
   if (ext !== "pdf")
     throw Error(
       "Use a text-based PDF, TXT or Markdown file. Export Word and slides to PDF first.",
     );
-  const pdfjs = await import("../vendor/pdf.mjs");
+  const pdfjs = await import("../vendor/pdf.mjs?v=4.10.38");
   pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-    "../vendor/pdf.worker.mjs",
+    "../vendor/pdf.worker.mjs?v=4.10.38",
     import.meta.url,
   ).href;
   const loadingTask = pdfjs.getDocument({
@@ -159,7 +159,7 @@ export async function readDocument(file, onProgress = () => {}) {
   });
   const doc = await loadingTask.promise;
   try {
-    if (doc.numPages > 80) throw Error("Use a PDF with 80 pages or fewer.");
+    if (doc.numPages > 500) throw Error("Use a PDF with 500 pages or fewer.");
     const pages = [];
     let size = 0;
     for (let n = 1; n <= doc.numPages; n++) {
@@ -170,11 +170,13 @@ export async function readDocument(file, onProgress = () => {}) {
       for (const item of content.items)
         text += item.str + (item.hasEOL ? "\n" : " ");
       size += text.length;
-      if (size > 250000)
+      if (size > 1500000)
         throw Error(
-          "Use a shorter document, under 250,000 extracted characters.",
+          "Use a shorter document, under 1,500,000 extracted characters.",
         );
       pages.push({ page: n, text });
+      page.cleanup();
+      if(n%8===0)await new Promise(resolve=>setTimeout(resolve,0));
     }
     if (pages.reduce((n, p) => n + p.text.trim().length, 0) < 60)
       throw Error(

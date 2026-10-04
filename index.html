@@ -1,26 +1,35 @@
 <!doctype html>
-<html lang="en">
+<html lang="en-AU" data-theme="dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <meta name="theme-color" content="#f6f4ec" />
+    <meta name="theme-color" content="#090c11" />
     <meta
       name="description"
-      content="When life interrupts, find your next achievable step. Again helps students rebuild assignment plans with honest trade-offs."
+      content="When life interrupts, find your next achievable step. ReStrive helps students rebuild assignment plans with honest trade-offs."
     />
-    <title>Again — room to begin again</title>
-    <link rel="icon" href="./favicon.svg" />
+    <title>ReStrive — your next move starts here</title>
+    <link rel="icon" href="./assets/restrive-logo.png" />
     <link rel="stylesheet" href="./style.css" />
+    <link rel="stylesheet" href="./design.css" />
   </head>
   <body>
     <a href="#main" class="skip">Skip to your plan</a>
     <div class="app-shell">
       <aside class="sidebar">
-        <a class="brand" href="./" aria-label="Again home"
-          ><img src="./favicon.svg" alt="" />again<span>®</span></a
-        >
-        <p class="brand-caption">ROOM TO BEGIN AGAIN</p>
+        <a class="brand" href="./" aria-label="ReStrive home"
+          ><img
+            src="./assets/restrive-logo.png"
+            alt="Re-Strive — finish, achieve, re-strive"
+        /></a>
+        <p class="brand-caption">YOUR LEARNING OPERATING SYSTEM</p>
         <nav aria-label="Main navigation">
+          <button class="nav-item" data-view="calendar">
+            <span>▦</span> Calendar
+          </button>
+          <button class="nav-item" data-view="studio">
+            <span>✳</span> Assignment studio
+          </button>
           <button class="nav-item active" data-view="today">
             <span>◒</span> My next step
             <span class="nav-count">01</span></button
@@ -34,6 +43,13 @@
             <span>↗</span> My assignment
           </button>
         </nav>
+        <button class="profile-control" data-view="profile">
+          <span class="profile-avatar">S</span
+          ><span
+            ><b class="profile-name">Student</b
+            ><small>Profile & settings ↗</small></span
+          >
+        </button>
         <div class="sidebar-note">
           <span class="little-star">✳</span>
           <p>Life happens.<br />Your plan can change.</p>
@@ -53,8 +69,8 @@
             <span id="today-date"></span
             ><button
               class="avatar"
-              data-action="edit"
-              aria-label="Edit assignment"
+              data-view="profile"
+              aria-label="Profile and settings"
             >
               ↗
             </button>
@@ -64,7 +80,7 @@
         <footer>
           <span>Progress has more than one pace.</span
           ><span
-            >AGAIN / A WORKING PROTOTYPE
+            >RESTRIVE / A WORKING PROTOTYPE
             <button data-action="about">About this experiment ↗</button></span
           >
         </footer>

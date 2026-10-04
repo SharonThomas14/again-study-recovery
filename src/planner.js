@@ -12,8 +12,9 @@ export function daysBetween(a, b) {
 }
 export function dateLabel(
   day,
-  opts = { weekday: "short", day: "numeric", month: "short" },
+  opts = null,
 ) {
+  if(!opts){const[y,m,d]=day.split("-");return `${d}/${m}/${y.slice(-2)}`;}
   return new Date(day + "T12:00:00").toLocaleDateString("en-AU", opts);
 }
 export const minutes = (n) =>

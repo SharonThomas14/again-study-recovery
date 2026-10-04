@@ -1,3 +1,13 @@
+import { numericDate, parseNumericDate } from "./dates.js";
+import {
+  initPersonal,
+  profileScreen,
+  calendarScreen,
+  personalExport,
+  personalRestore,
+} from "./personal.js";
+import { initStudio, studioScreen, getConfig } from "./studio.js";
+import { calendarControls, initCalendar } from "./calendar.js";
 import {
   initCampus,
   campusScreen,
@@ -62,6 +72,7 @@ if (!state.schedule?.days) state.schedule = current();
 const remaining = () =>
   state.tasks.reduce((n, t) => n + Math.max(0, t.estimate - t.completed), 0);
 function save() {
+  state.schedule = current();
   try {
     localStorage.setItem(KEY, JSON.stringify(state));
     projects = projects.filter((p) => p.projectId !== state.projectId);
@@ -105,6 +116,9 @@ function render() {
     month: "short",
   }).toUpperCase();
   $("#top-label").textContent = {
+    profile: "Your profile",
+    calendar: "Your calendar",
+    studio: "Your assignment studio",
     today: "A fresh start",
     plan: "Your assignment, in view",
     library: "Your course library",
@@ -117,6 +131,15 @@ function render() {
     $("#main").innerHTML = campusScreen(view);
     return;
   }
+  if (view === "calendar" || view === "profile") {
+    $("#main").innerHTML =
+      view === "calendar" ? calendarScreen() : profileScreen();
+    return;
+  }
+  if (view === "studio") {
+    $("#main").innerHTML = studioScreen();
+    return;
+  }
   const p = current(),
     done = remaining() === 0,
     next = p.days.flatMap((d) =>
@@ -126,7 +149,7 @@ function render() {
     `${storageError ? '<div class="storage-error">Saved data could not be read or device storage is unavailable. Export a backup before leaving.</div>' : ""}${
       view === "today"
         ? `
- <section class="hero"><div><div class="eyebrow"><span class="status-dot"></span> ${state.demo ? "A LITTLE PRACTICE. A REAL FRESH START." : "YOUR PLAN, AT YOUR PACE."}</div><h1>${done ? "Look how far<br><em>you’ve come.</em>" : "A little off track.<br><em>Still moving forward.</em>"}</h1><p>${done ? "Your assignment steps are complete. Take a moment to enjoy it." : "You don’t need to catch up with yesterday. Just find your next step."}</p></div><svg class="route-art" viewBox="0 0 180 150" aria-hidden="true"><path d="M10 130C55 138 25 65 61 57C100 48 106 120 73 113C30 104 95 9 146 38" fill="none" stroke="#e75c3d" stroke-width="2.5" stroke-linecap="round"/><path d="M130 23l20 16-25 5" fill="none" stroke="#e75c3d" stroke-width="2.5"/><circle cx="10" cy="130" r="4" fill="#e75c3d"/><text x="70" y="145" font-size="10" fill="#717568">a different way forward</text></svg></section>
+ <section class="hero"><div><div class="eyebrow"><span class="status-dot"></span> ${state.demo ? "A LITTLE PRACTICE. A REAL FRESH START." : "YOUR PLAN, AT YOUR PACE."}</div><h1>${done ? "Look how far<br><em>you’ve come.</em>" : "Make your next<br><em>move count.</em>"}</h1><p>${done ? "Your assignment steps are complete. Take a moment to enjoy it." : "A living plan for an unpredictable life. Learn, make progress, and find your way back."}</p></div><div class="mission-sculpture" aria-hidden="true"><div class="sculpture-orbit"></div><div class="floating-tile tile-blue"><small>01 / FOCUS</small><b>↗</b><span>One next step.</span></div><div class="floating-tile tile-lime"><small>02 / RECOVER</small><b>✳</b><span>Room to return.</span></div><div class="floating-tile tile-glass"><small>YOUR PACE</small><b>∞</b></div></div></section>
  ${p.overflow ? `<div class="notice warning" role="status">${minutes(p.overflow)} of work still does not fit before your deadline. <button class="text-button" data-action="recover">Review the trade-off ↗</button></div>` : ""}
  <div class="section-title"><h2>Let’s work with today.</h2><span class="tag">${state.demo ? "EXAMPLE ASSIGNMENT" : "YOUR ASSIGNMENT"}</span></div><section class="desk-grid"><div class="recovery-card"><div class="card-head"><span class="eyebrow">01 / RESET THE PLAN</span><span>↺</span></div><h2>What changed?</h2><p class="subtext">Less time? Missed a session? There’s room to adjust.</p><label class="sr-only" for="interruption">What changed?</label><textarea id="interruption" maxlength="500">${esc(interruption)}</textarea><div class="time-row"><span class="subtext">Time I have today</span><div class="time-pills">${[0, 20, 45, 60].map((n) => `<button data-minutes="${n}" class="${n === todayMinutes ? "selected" : ""}" aria-pressed="${n === todayMinutes}">${n}m</button>`).join("")}</div></div><button class="primary" data-action="recover">Find my way forward <span>↗</span></button><p class="hint">See what changes before you commit. <button class="text-button" data-action="custom-time">Other time</button></p></div>
  <article class="next-card"><div class="card-head"><span class="eyebrow">02 / YOUR NEXT SMALL STEP</span><span class="tag">${next ? minutes(next.minutes) : "ALL CLEAR"}</span></div><div class="circle-detail"></div><h2>${done ? "You did the thing." : next ? esc(next.title) : "Make room for what matters."}</h2><p>${done ? "Every small session added up. Your work is ready for its next chapter." : next ? esc(state.tasks.find((t) => t.id === next.taskId)?.note) : "There is no study time before your deadline. Adjust your availability or decide what can wait."}</p><div class="next-bottom"><span>${next ? `${next.date === iso() ? "TODAY" : dateLabel(next.date).toUpperCase()} · ONE THING AT A TIME` : "YOUR PACE. YOUR PLAN."}</span><button class="round-arrow" data-action="${next ? "focus" : "edit"}" aria-label="${next ? "Start focus session" : "Edit assignment"}">↗</button></div></article></section>
@@ -213,14 +236,14 @@ function edit(isNew = false) {
       }
     : state;
   modal(
-    `${header(isNew ? "Make room for your assignment." : "Your assignment. Your priorities.")}<form id="edit-form" data-new="${isNew}"><label class="field">Assignment name<input name="title" value="${esc(p.title)}" placeholder="e.g. Community design proposal" required maxlength="120"></label><div class="form-row"><label class="field">Course / subject<input name="course" value="${esc(p.course)}" placeholder="Optional" maxlength="100"></label><label class="field">Deadline<input name="deadline" type="date" value="${p.deadline}" min="${iso()}" max="${addDays(iso(), 90)}" required></label></div><label class="field">What are you aiming for?<input name="goal" value="${esc(p.goal)}" maxlength="180" required></label><h3 style="font-size:14px;margin-top:25px">Break it into steps.</h3><p class="subtext">Keep prerequisite steps first. Estimates include work already done. Mark optional only when you can safely defer that step.</p><div class="task-edit task-labels"><span>STEP · IN WORKING ORDER</span><span>MINUTES</span><span>OPTIONAL</span></div><div id="edit-tasks">${p.tasks.map(taskEditor).join("")}</div><button type="button" class="text-button" data-action="add-task">+ Add a step</button><p id="form-error" class="error" role="alert"></p><div class="button-row"><button type="button" class="secondary" data-action="close">Cancel</button><button class="primary" type="submit">${isNew ? "Set my availability" : "Save assignment"} <span>↗</span></button></div>${isNew ? '<p class="hint">Your current assignment stays in your project library.</p>' : ""}</form>`,
+    `${header(isNew ? "Make room for your assignment." : "Your assignment. Your priorities.")}<form id="edit-form" data-new="${isNew}"><label class="field">Assignment name<input name="title" value="${esc(p.title)}" placeholder="e.g. Community design proposal" required maxlength="120"></label><div class="form-row"><label class="field">Course / subject<input name="course" value="${esc(p.course)}" placeholder="Optional" maxlength="100"></label><label class="field">Deadline<input name="deadline" type="text" inputmode="numeric" placeholder="DD/MM/YY" pattern="[0-9]{2}/[0-9]{2}/[0-9]{2}" value="${numericDate(p.deadline)}" required></label></div><label class="field">What are you aiming for?<input name="goal" value="${esc(p.goal)}" maxlength="180" required></label><h3 style="font-size:14px;margin-top:25px">Break it into steps.</h3><p class="subtext">Keep prerequisite steps first. Estimates include work already done. Mark optional only when you can safely defer that step.</p><div class="task-edit task-labels"><span>STEP · IN WORKING ORDER</span><span>MINUTES</span><span>OPTIONAL</span></div><div id="edit-tasks">${p.tasks.map(taskEditor).join("")}</div><button type="button" class="text-button" data-action="add-task">+ Add a step</button><p id="form-error" class="error" role="alert"></p><div class="button-row"><button type="button" class="secondary" data-action="close">Cancel</button><button class="primary" type="submit">${isNew ? "Set my availability" : "Save assignment"} <span>↗</span></button></div>${isNew ? '<p class="hint">Your current assignment stays in your project library.</p>' : ""}</form>`,
   );
 }
 function availability() {
   const p = draft || state,
     count = Math.min(91, Math.max(0, daysBetween(iso(), state.deadline) + 1));
   modal(
-    `${header("Time you actually have.")}<p class="subtext">Realistic study minutes, after work, meals, travel and rest. Zero is valid. These are daily budgets; calendar export creates all-day reminders.</p><form id="availability-form"><div class="week-inputs">${Array.from(
+    `${header("Time you actually have.")}<p class="subtext">Realistic study minutes, after work, meals, travel and rest. Zero is valid. These are daily budgets; calendar export creates all-day reminders.</p>${calendarControls()}<form id="availability-form"><div class="week-inputs">${Array.from(
       { length: count },
       (_, i) => {
         const day = addDays(iso(), i);
@@ -325,7 +348,7 @@ function exportCalendar() {
   const rows = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//Again//Study Recovery//EN",
+    "PRODID:-//ReStrive//Study Recovery//EN",
     "CALSCALE:GREGORIAN",
   ];
   for (const d of p.days)
@@ -346,17 +369,17 @@ function exportCalendar() {
       ),
     );
   rows.push("END:VCALENDAR");
-  download("again-study-plan.ics", rows.join("\r\n"), "text/calendar");
+  download("restrive-study-plan.ics", rows.join("\r\n"), "text/calendar");
   toast("Exported as all-day study reminders.");
 }
 function about() {
   modal(
-    `${header("Room to begin again.")}<p class="subtext">Again is an assignment recovery experiment for students whose lives don’t follow a perfect calendar. It makes remaining work, actual availability and the consequences of replanning visible.</p><div class="notice">This prototype uses a rule-based scheduler. It doesn’t predict grades, read your rubric, or use a language model. You control estimates, step order and optional work.</div><p class="subtext">The hypothesis: students find it easier to resume when they understand and choose the trade-off. This still needs testing with real students.</p><div class="button-row"><button class="secondary" data-action="demo">Load example assignment</button><button class="primary" data-action="new">Try your own assignment <span>↗</span></button></div>`,
+    `${header("Room to begin again.")}<p class="subtext">ReStrive is an assignment recovery experiment for students whose lives don’t follow a perfect calendar. It makes remaining work, actual availability and the consequences of replanning visible.</p><div class="notice">This prototype uses a rule-based scheduler. The recovery scheduler doesn’t predict grades. The Assignment Studio has a free downloaded AI model and an optional cloud connection. You control estimates, step order and optional work.</div><p class="subtext">The hypothesis: students find it easier to resume when they understand and choose the trade-off. This still needs testing with real students.</p><div class="button-row"><button class="secondary" data-action="demo">Load example assignment</button><button class="primary" data-action="new">Try your own assignment <span>↗</span></button></div>`,
   );
 }
 function privacy() {
   modal(
-    `${header("Your plan stays here.")}<p class="subtext">Your assignments, course text and practice history are saved in this browser’s local storage. They are not sent to an AI service or synced to another device. Clearing browser data removes this copy. Download a backup to keep it.</p><p class="subtext">Fonts load from Google Fonts. Hosting receives normal web requests. There is no app analytics, account system or payment collection. Reminder notifications work while the page is open; calendar exports can remind you after it closes.</p><div class="button-row"><button class="secondary" data-action="backup">Download backup</button><button class="secondary" data-action="import">Restore backup</button><button class="secondary" data-action="clear-data">Clear saved plan</button></div>`,
+    `${header("Your plan stays here.")}<p class="subtext">Your assignments, course text and practice history are saved in this browser’s local storage. They are not synced to another device. When you use a configured AI agent, the current assignment brief, rubric, notes, steps, source metadata and recent mentor messages are sent to the configured AI provider. Research searches send your keywords to Crossref. Google Calendar connects directly to Google after consent; only daily budgets are saved. Clearing browser data removes this copy. Download a backup to keep it.</p><p class="subtext">Fonts load from Google Fonts. Hosting receives normal web requests. There is no app analytics, account system or payment collection. Reminder notifications work while the page is open; calendar exports can remind you after it closes.</p><div class="button-row"><button class="secondary" data-action="backup">Download backup</button><button class="secondary" data-action="import">Restore backup</button><button class="secondary" data-action="clear-data">Clear saved plan</button></div>`,
   );
 }
 document.addEventListener("input", (e) => {
@@ -473,13 +496,14 @@ document.addEventListener("click", (e) => {
       break;
     case "backup":
       download(
-        "again-backup.json",
+        "restrive-backup.json",
         JSON.stringify(
           {
             format: "again.workspace.v1",
             active: state,
             projects,
             learning: campusExport(),
+            personal: personalExport(),
           },
           null,
           2,
@@ -542,7 +566,7 @@ document.addEventListener("click", (e) => {
       break;
     case "import":
       modal(
-        `${header("Restore an assignment.")}<p class="subtext">An Again JSON backup replaces this device’s current plan.</p><form id="import-form"><label class="field">Backup file<input type="file" name="backup" accept="application/json,.json" required></label><p id="import-error" class="error" role="alert"></p><button class="primary" type="submit">Restore backup <span>↗</span></button></form>`,
+        `${header("Restore an assignment.")}<p class="subtext">An ReStrive JSON backup replaces this device’s current plan.</p><form id="import-form"><label class="field">Backup file<input type="file" name="backup" accept="application/json,.json" required></label><p id="import-error" class="error" role="alert"></p><button class="primary" type="submit">Restore backup <span>↗</span></button></form>`,
       );
       break;
   }
@@ -569,6 +593,7 @@ document.addEventListener("submit", async (e) => {
         ? null
         : state.tasks.find((t) => t.id === row.dataset.taskId);
       return {
+        ...old,
         id: row.dataset.taskId,
         title: row.querySelector("input[type=text]").value.trim(),
         estimate: Number(row.querySelector("input[type=number]").value),
@@ -588,8 +613,13 @@ document.addEventListener("submit", async (e) => {
     }
     undo = structuredClone(state);
     if (isNew) save();
-    const deadline = String(data.get("deadline")),
+    const deadline = parseNumericDate(String(data.get("deadline"))),
       av = isNew ? {} : { ...state.availability };
+    if (!deadline || deadline < iso() || deadline > addDays(iso(), 90)) {
+      $("#form-error").textContent =
+        "Use DD/MM/YY, between today and 90 days away.";
+      return;
+    }
     if (isNew)
       for (let d = iso(); d <= deadline; d = addDays(d, 1))
         av[d] = new Date(d + "T12:00:00").getDay() === 0 ? 0 : 45;
@@ -597,6 +627,7 @@ document.addEventListener("submit", async (e) => {
       ...state,
       projectId: isNew ? crypto.randomUUID() : state.projectId,
       demo: false,
+      studio: isNew ? undefined : state.studio,
       title: String(data.get("title")).trim(),
       course: String(data.get("course")).trim(),
       goal: String(data.get("goal")).trim(),
@@ -636,7 +667,7 @@ document.addEventListener("submit", async (e) => {
       const raw = JSON.parse(await file.text());
       const loaded = raw.format === "again.workspace.v1" ? raw.active : raw;
       if (!validateProject(loaded))
-        throw Error("This is not a valid Again backup.");
+        throw Error("This is not a valid ReStrive backup.");
       if (raw.format === "again.workspace.v1") {
         if (
           !Array.isArray(raw.projects) ||
@@ -644,6 +675,7 @@ document.addEventListener("submit", async (e) => {
         )
           throw Error("Invalid project library.");
         campusRestore(raw.learning);
+        if (raw.personal) personalRestore(raw.personal);
         projects = raw.projects;
       }
       undo = structuredClone(state);
@@ -736,6 +768,57 @@ initCampus({
     render();
     close();
     toast("Study tasks added. Set your realistic availability next.");
+  },
+});
+initPersonal({ project: () => state, render, toast, modal, header, close });
+initCalendar(getConfig);
+initStudio({
+  project: () => state,
+  save,
+  render,
+  toast,
+  modal,
+  header,
+  close,
+  apply: (steps) => {
+    if (!steps?.length) return;
+    if (
+      state.tasks.filter((t) => t.completed >= t.estimate).length +
+        steps.length >
+      50
+    )
+      throw Error(
+        "Completed and proposed missions exceed the 50-step limit. Reduce the proposal first.",
+      );
+    undo = structuredClone(state);
+    state.tasks = [
+      ...state.tasks.filter((t) => t.completed >= t.estimate),
+      ...steps.map((t) => ({
+        ...t,
+        id: crypto.randomUUID(),
+        completed: 0,
+        optional: false,
+      })),
+    ];
+    state.omitted = [];
+    save();
+  },
+  log: (id, min) => {
+    const t = state.tasks.find((t) => t.id === id);
+    if (!t) throw Error("Choose a mission first.");
+    undo = structuredClone(state);
+    const used = Math.min(min, t.estimate - t.completed);
+    if (used <= 0)
+      throw Error(
+        "This mission is already complete. Increase its estimate if more work remains.",
+      );
+    t.completed += used;
+    state.availability[iso()] = Math.max(
+      0,
+      (state.availability[iso()] || 0) - used,
+    );
+    save();
+    return used;
   },
 });
 render();

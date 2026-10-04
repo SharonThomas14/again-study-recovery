@@ -1,3 +1,4 @@
+import { numericDate, parseNumericDate } from "./dates.js";
 import { iso, addDays, dateLabel } from "./planner.js";
 import {
   extractStudyMaterial,
@@ -133,7 +134,7 @@ function dashboard(c, s) {
 }
 function uploadModal() {
   api.modal(
-    `${api.header("Bring your course to life.")}<p class="subtext">Try the import flow with <button class="text-button" data-campus="sample-pdf">our sample PDF ↗</button>, or add your own material below.</p><form id="material-form"><label class="field">Material title<input name="title" placeholder="e.g. Week 3 lecture notes" maxlength="120"></label><label class="field">Upload PDF, TXT or Markdown<input type="file" name="file" accept=".pdf,.txt,.md"></label><p class="subtext">Or paste your notes. Use headings and blank lines to separate topics.</p><label class="field">Paste course material<textarea name="text" rows="7" maxlength="250000" placeholder="# Topic name&#10;A concept is…"></textarea></label><p class="hint">PDFs: text layer required, up to 80 pages / 15 MB. For scanned pages, run OCR first. Pasted text takes precedence over a file.</p><p class="error" id="upload-error" role="alert"></p><p class="subtext" id="upload-status" role="status"></p><button type="submit" class="primary" id="upload-submit">Create my study material <span>↗</span></button></form>`,
+    `${api.header("Bring your course to life.")}<p class="subtext">Try the import flow with <button class="text-button" data-campus="sample-pdf">our sample PDF ↗</button>, or add your own material below.</p><form id="material-form"><label class="field">Material title<input name="title" placeholder="e.g. Week 3 lecture notes" maxlength="120"></label><label class="field">Upload PDF, TXT or Markdown<input type="file" name="file" accept=".pdf,.txt,.md"></label><p class="subtext">Or paste your notes. Use headings and blank lines to separate topics.</p><label class="field">Paste course material<textarea name="text" rows="7" maxlength="1500000" placeholder="# Topic name&#10;A concept is…"></textarea></label><p class="hint">PDFs: text layer required, up to 500 pages / 50 MB. For scanned pages, run OCR first. Pasted text takes precedence over a file.</p><p class="error" id="upload-error" role="alert"></p><p class="subtext" id="upload-status" role="status"></p><button type="submit" class="primary" id="upload-submit">Create my study material <span>↗</span></button></form>`,
   );
 }
 function source(docId, page = 1) {
@@ -221,7 +222,7 @@ function guide() {
 function courseForm(existing = false) {
   const c = existing ? course() : null;
   api.modal(
-    `${api.header(existing ? "A goal worth making room for." : "A new course. A fresh page.")}<form id="course-form" data-existing="${existing}"><label class="field">Course name<input name="name" maxlength="100" required value="${esc(c?.name || "")}" placeholder="e.g. Introduction to psychology"></label><label class="field">Learning goal<input name="goal" maxlength="180" required value="${esc(c?.goal || "")}" placeholder="e.g. Explain core concepts without my notes"></label><label class="field">Target exam date (optional)<input name="exam" type="date" min="${iso()}" value="${esc(c?.exam || "")}"></label><button class="primary" type="submit">${existing ? "Save goal" : "Create course"} <span>↗</span></button></form>`,
+    `${api.header(existing ? "A goal worth making room for." : "A new course. A fresh page.")}<form id="course-form" data-existing="${existing}"><label class="field">Course name<input name="name" maxlength="100" required value="${esc(c?.name || "")}" placeholder="e.g. Introduction to psychology"></label><label class="field">Learning goal<input name="goal" maxlength="180" required value="${esc(c?.goal || "")}" placeholder="e.g. Explain core concepts without my notes"></label><label class="field">Target exam date (optional)<input name="exam" type="text" inputmode="numeric" placeholder="DD/MM/YY" pattern="[0-9]{2}/[0-9]{2}/[0-9]{2}" value="${numericDate(c?.exam || "")}"></label><button class="primary" type="submit">${existing ? "Save goal" : "Create course"} <span>↗</span></button></form>`,
   );
 }
 function reminder() {
@@ -447,15 +448,20 @@ export function initCampus(a) {
       const name = String(d.get("name")).trim(),
         goal = String(d.get("goal")).trim();
       if (!name || !goal) return;
+      const exam = d.get("exam") ? parseNumericDate(String(d.get("exam"))) : "";
+      if (d.get("exam") && (!exam || exam < iso())) {
+        api.toast("Enter a real future date as DD/MM/YY.");
+        return;
+      }
       let c = f.dataset.existing === "true" ? course() : null;
       if (c) {
-        Object.assign(c, { name, goal, exam: String(d.get("exam")) });
+        Object.assign(c, { name, goal, exam });
       } else {
         c = {
           id: crypto.randomUUID(),
           name,
           goal,
-          exam: String(d.get("exam")),
+          exam,
           documents: [],
           topics: [],
         };
@@ -504,7 +510,7 @@ export function initCampus(a) {
         api.close();
         api.render();
         api.toast(
-          `${topics.length} topics created. Review their source-linked notes before practising.`,
+          `${topics.length} topics created.${topics.length === 60 ? " The 60-topic limit was reached; later material may not be represented. Import smaller sections for full coverage." : ""} Review their source-linked notes before practising.`,
         );
       } catch (err) {
         if ($("#upload-error")) $("#upload-error").textContent = err.message;
@@ -560,11 +566,11 @@ export function initCampus(a) {
             .replace(/\.\d{3}/, ""),
         safe = db.reminder.title.replace(/[\r\n,;\\]/g, " ");
       api.download(
-        "again-reminder.ics",
+        "restrive-reminder.ics",
         [
           "BEGIN:VCALENDAR",
           "VERSION:2.0",
-          "PRODID:-//Again//Study reminder//EN",
+          "PRODID:-//ReStrive//Study reminder//EN",
           "BEGIN:VEVENT",
           `UID:${crypto.randomUUID()}@again.local`,
           `DTSTAMP:${stamp(new Date())}`,
@@ -594,7 +600,7 @@ export function initCampus(a) {
       persist();
       api.toast(title + " — a small step still counts.");
       if ("Notification" in window && Notification.permission === "granted")
-        new Notification("Again · time for your next step", {
+        new Notification("ReStrive · time for your next step", {
           body: title,
           icon: "./favicon.svg",
         });

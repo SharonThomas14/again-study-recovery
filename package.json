@@ -12,6 +12,10 @@
     "node": ">=20"
   },
   "dependencies": {
-    "pdfjs-dist": "6.3.289"
+    "@wllama/wllama": "2.3.7",
+    "docx": "^9.8.1",
+    "ical.js": "^2.2.1",
+    "pdfjs-dist": "4.10.38",
+    "pptxgenjs": "^4.0.1"
   }
 }
